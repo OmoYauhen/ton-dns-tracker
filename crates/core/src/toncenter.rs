@@ -63,6 +63,9 @@ struct RateLimiterState {
 
 const MAX_INTERVAL: Duration = Duration::from_secs(30);
 const RECOVERY_COOLDOWN: Duration = Duration::from_secs(60);
+/// Per-request 429 retries inside `TonCenterClient::get` -- each one has
+/// already doubled the shared interval, so this covers a 32x slowdown.
+const MAX_RATE_LIMIT_RETRIES: u32 = 5;
 
 impl RateLimiter {
     fn new(rps: f64) -> Self {
@@ -92,7 +95,7 @@ impl RateLimiter {
         let mut state = self.state.lock().unwrap();
         state.last_rate_limited_at = Some(Instant::now());
         state.interval = (state.interval * 2).min(MAX_INTERVAL);
-        tracing::warn!(new_interval = ?state.interval, "toncenter rate limited us, slowing down");
+        tracing::info!(new_interval = ?state.interval, "toncenter rate limited us, slowing down");
     }
 
     fn record_success(&self) {
@@ -134,25 +137,39 @@ impl TonCenterClient {
         path: &str,
         query: &[(&str, String)],
     ) -> Result<T, TonCenterError> {
-        self.limiter.acquire().await;
         let url = format!("{}{}", self.base_url, path);
-        let resp = self
-            .http
-            .get(&url)
-            .header("X-API-Key", &self.api_key)
-            .query(query)
-            .send()
-            .await?;
-        if !resp.status().is_success() {
-            let status = resp.status();
-            if status.as_u16() == 429 {
-                self.limiter.record_rate_limited();
+        let mut attempt = 0;
+        loop {
+            self.limiter.acquire().await;
+            let mut req = self.http.get(&url).query(query);
+            // toncenter rejects an empty X-API-Key with 401; omit it to use the
+            // keyless (1 req/s) tier instead.
+            if !self.api_key.is_empty() {
+                req = req.header("X-API-Key", &self.api_key);
             }
-            let body = resp.text().await.unwrap_or_default();
-            return Err(TonCenterError::Api(format!("{status}: {body}")));
+            let resp = req.send().await?;
+            let status = resp.status();
+            // A 429 is flow control, not a failure: the limiter has just
+            // slowed down for every caller, so retry here at the new pace
+            // instead of failing the caller's whole pass (e.g. a refresh
+            // pass hundreds of chunks deep) over one request. toncenter
+            // enforces its per-second limit loosely enough that running
+            // right at it still trips the odd 429.
+            if status.as_u16() == 429 && attempt < MAX_RATE_LIMIT_RETRIES {
+                attempt += 1;
+                self.limiter.record_rate_limited();
+                continue;
+            }
+            if !status.is_success() {
+                if status.as_u16() == 429 {
+                    self.limiter.record_rate_limited();
+                }
+                let body = resp.text().await.unwrap_or_default();
+                return Err(TonCenterError::Api(format!("{status}: {body}")));
+            }
+            self.limiter.record_success();
+            return Ok(resp.json::<T>().await?);
         }
-        self.limiter.record_success();
-        Ok(resp.json::<T>().await?)
     }
 
     /// One page of an account's own transaction history, oldest-first,

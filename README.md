@@ -98,9 +98,9 @@ See [`.env.example`](./.env.example):
 | Variable | Description |
 | --- | --- |
 | `DATABASE_URL` | Postgres connection string used by `diesel_cli` and both binaries |
-| `TONCENTER_API_KEY` | API key for [toncenter.com](https://toncenter.com/) |
+| `TONCENTER_API_KEY` | API key for [toncenter.com](https://toncenter.com/); leave empty for the keyless tier (~1 req/s) |
 | `TONCENTER_BASE_URL` | toncenter API base URL |
-| `TONCENTER_RATE_LIMIT_RPS` | Client-side rate limit for toncenter requests |
+| `TONCENTER_RATE_LIMIT_RPS` | Client-side rate limit for toncenter requests; `9` with a free-tier key (a sustained 10 still trips occasional 429s), `1` without one |
 | `DNS_COLLECTION_ADDRESS` | `.ton` DNS collection NFT contract address, aka "Root DNS address" / config param #4 (indexer only; temporary until config-param lookup is implemented; default in `.env.example` is the real mainnet address) |
 | `BIND_ADDR` | Address the `ton-dns-ui` server binds to |
 
