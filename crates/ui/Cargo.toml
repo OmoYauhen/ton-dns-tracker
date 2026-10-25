@@ -1,0 +1,30 @@
+[package]
+name = "ton-dns-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "ton-dns-ui"
+path = "src/main.rs"
+
+[dependencies]
+ton-dns-core = { workspace = true }
+
+diesel = { workspace = true }
+diesel-async = { workspace = true }
+bb8 = { workspace = true }
+hex = { workspace = true }
+chrono = { workspace = true }
+
+axum = { workspace = true }
+askama = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+
+anyhow = { workspace = true }
+dotenvy = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

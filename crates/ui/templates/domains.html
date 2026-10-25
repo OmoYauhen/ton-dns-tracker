@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>ton-dns-tracker</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { font-family: system-ui, sans-serif; margin: 2rem; background: #0d1117; color: #c9d1d9; }
+    a { color: #58a6ff; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; padding: 0.4rem 0.8rem; border-bottom: 1px solid #30363d; }
+    th { color: #8b949e; }
+    select, input, button {
+      background: #161b22; color: #c9d1d9; border: 1px solid #30363d;
+      border-radius: 4px; padding: 0.3rem 0.5rem; font: inherit;
+    }
+    button { cursor: pointer; }
+    button:hover { background: #21262d; }
+    .status-active { color: #3fb950; }
+    .status-releasable { color: #f85149; font-weight: bold; }
+    .status-in_auction { color: #d29922; }
+    .status-auction_ended_unsettled { color: #8b949e; }
+    .pagination { margin-top: 1rem; display: flex; gap: 1rem; align-items: center; }
+    .pagination .disabled { color: #484f58; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .icon-link { text-decoration: none; margin-left: 0.3rem; }
+  </style>
+</head>
+<body>
+  <h1>.ton domains</h1>
+
+  <form method="get">
+    <label>
+      status:
+      <select name="status">
+        <option value="" {% if status_filter == "" %}selected{% endif %}>any</option>
+        <option value="active" {% if status_filter == "active" %}selected{% endif %}>active</option>
+        <option value="releasable" {% if status_filter == "releasable" %}selected{% endif %}>releasable -- expired, available to start a new auction</option>
+        <option value="in_auction" {% if status_filter == "in_auction" %}selected{% endif %}>in_auction -- bidding open</option>
+        <option value="auction_ended_unsettled" {% if status_filter == "auction_ended_unsettled" %}selected{% endif %}>auction_ended_unsettled -- winner pending settlement, NOT available</option>
+      </select>
+    </label>
+    <input type="hidden" name="sort" value="{{ sort }}">
+    <button type="submit">filter</button>
+  </form>
+
+  <p>
+    <a href="?status=releasable">expired domains available for a new auction &rarr;</a>
+    &nbsp;|&nbsp;
+    <a href="?status=active&sort=expiring">domains expiring soon &rarr;</a>
+    &nbsp;|&nbsp;
+    <a href="/pending-events">pending event history &rarr;</a>
+  </p>
+
+  <p>{{ total }} domain{% if total != 1 %}s{% endif %}</p>
+
+  <table>
+    <thead>
+      <tr><th>domain</th><th>status</th><th>owner</th><th>last fill-up</th></tr>
+    </thead>
+    <tbody>
+      {% for d in domains %}
+      <tr>
+        <td>
+          <a href="/domain/{{ d.name_only }}">{{ d.name }}</a>
+          <a class="icon-link" href="https://dns.ton.org/#{{ d.name_only }}" title="dns.ton.org">&#8599;</a>
+          <a class="icon-link" href="https://gram.org/nft/{{ d.address_friendly }}" title="view NFT on gram.org">&#128269;</a>
+        </td>
+        <td class="status-{{ d.status }}">{{ d.status }}</td>
+        <td class="mono">
+          {% if let Some(owner) = d.owner %}
+          <a href="https://gram.org/address/{{ owner }}">{{ owner }}</a>
+          {% else %}
+          —
+          {% endif %}
+        </td>
+        <td>{{ d.last_fill_up_time }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="pagination">
+    {% if has_prev %}
+      <a href="?status={{ status_filter }}&limit={{ limit }}&offset={{ prev_offset }}&sort={{ sort }}">&laquo; previous</a>
+    {% else %}
+      <span class="disabled">&laquo; previous</span>
+    {% endif %}
+    <span>page {{ current_page }} of {{ total_pages }}</span>
+    {% if has_next %}
+      <a href="?status={{ status_filter }}&limit={{ limit }}&offset={{ next_offset }}&sort={{ sort }}">next &raquo;</a>
+    {% else %}
+      <span class="disabled">next &raquo;</span>
+    {% endif %}
+  </div>
+</body>
+</html>

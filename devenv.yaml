@@ -1,0 +1,11 @@
+inputs:
+  nixpkgs:
+    url: github:NixOS/nixpkgs/nixos-unstable
+
+# Without this, devenv's automatic port allocation silently bumps
+# services.postgres off its configured port (5433) to the next free one
+# (seen: 5434) instead of erroring -- since DATABASE_URL in .env is
+# hardcoded to 5433, a silent bump just breaks the connection string
+# rather than helping. Strict mode fails loudly on a real conflict
+# instead, which is the actually-useful behavior here.
+strict_ports: true

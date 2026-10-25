@@ -1,0 +1,29 @@
+[package]
+name = "ton-dns-indexer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "ton-dns-indexer"
+path = "src/main.rs"
+
+[dependencies]
+ton-dns-core = { workspace = true }
+
+diesel = { workspace = true }
+diesel-async = { workspace = true }
+bb8 = { workspace = true }
+base64 = { workspace = true }
+bigdecimal = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+
+tokio = { workspace = true }
+
+anyhow = { workspace = true }
+dotenvy = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

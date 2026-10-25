@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ name }} -- ton-dns-tracker</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { font-family: system-ui, sans-serif; margin: 2rem; background: #0d1117; color: #c9d1d9; }
+    a { color: #58a6ff; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; padding: 0.4rem 0.8rem; border-bottom: 1px solid #30363d; }
+    th { color: #8b949e; }
+    .status-active { color: #3fb950; }
+    .status-releasable { color: #f85149; font-weight: bold; }
+    .status-in_auction { color: #d29922; }
+    .status-auction_ended_unsettled { color: #8b949e; }
+    .kind-registered { color: #3fb950; }
+    .kind-bid { color: #d29922; }
+    .kind-top_up { color: #58a6ff; }
+    .kind-ownership_change { color: #f85149; font-weight: bold; }
+    .kind-re_registered { color: #d2a8ff; font-weight: bold; }
+    dl { display: grid; grid-template-columns: 12rem 1fr; gap: 0.3rem 1rem; margin: 1rem 0 2rem; }
+    dt { font-weight: bold; color: #8b949e; }
+    dd { margin: 0; word-break: break-all; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .icon-link { text-decoration: none; margin-left: 0.3rem; }
+  </style>
+</head>
+<body>
+  <p><a href="/">&larr; all domains</a></p>
+  <h1>
+    <a href="https://dns.ton.org/#{{ name_only }}">{{ name }}</a>
+    <a class="icon-link" href="https://gram.org/nft/{{ address_friendly }}" title="view NFT on gram.org">&#128269;</a>
+    <span class="status-{{ status }}">({{ status }})</span>
+  </h1>
+
+  <dl>
+    <dt>owner</dt>
+    <dd class="mono">
+      {% if let Some(owner) = owner %}
+      <a href="https://gram.org/address/{{ owner }}">{{ owner }}</a>
+      {% else %}
+      —
+      {% endif %}
+    </dd>
+    <dt>last fill-up</dt><dd>{{ last_fill_up_time }}</dd>
+    {% if let Some(address) = auction_max_bid_address %}
+    {% if let Some(amount) = auction_max_bid_amount %}
+    <dt>auction max bid</dt>
+    <dd>{{ amount }} by <a class="mono" href="https://gram.org/address/{{ address }}">{{ address }}</a></dd>
+    {% endif %}
+    {% if let Some(end_time) = auction_end_time %}
+    <dt>auction end time</dt><dd>{{ end_time }}</dd>
+    {% endif %}
+    {% endif %}
+    {% if let Some(wallet) = wallet_address %}
+    <dt>wallet</dt><dd class="mono"><a href="https://gram.org/address/{{ wallet }}">{{ wallet }}</a></dd>
+    {% endif %}
+    {% if let Some(site) = site_adnl %}
+    <dt>site (adnl)</dt><dd class="mono">{{ site }}</dd>
+    {% endif %}
+    {% if let Some(bag) = storage_bag_id %}
+    <dt>storage bag id</dt><dd class="mono">{{ bag }}</dd>
+    {% endif %}
+    {% if let Some(resolver) = next_resolver %}
+    <dt>next resolver</dt><dd class="mono"><a href="https://gram.org/address/{{ resolver }}">{{ resolver }}</a></dd>
+    {% endif %}
+  </dl>
+
+  <h2>history</h2>
+  {% if events.is_empty() %}
+  <p>no recorded events yet.</p>
+  {% else %}
+  <table>
+    <thead>
+      <tr><th>when</th><th>kind</th><th>actor</th><th>amount</th><th>details</th></tr>
+    </thead>
+    <tbody>
+      {% for e in events %}
+      <tr>
+        <td>{{ e.event_time }}</td>
+        <td class="kind-{{ e.kind }}">{{ e.kind }}</td>
+        <td class="mono">
+          {% if let Some(actor) = e.actor %}
+          <a href="https://gram.org/address/{{ actor }}">{{ actor }}</a>
+          {% else %}
+          —
+          {% endif %}
+        </td>
+        <td>{{ e.amount }}</td>
+        <td>{{ e.details }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</body>
+</html>

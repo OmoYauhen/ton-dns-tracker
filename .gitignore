@@ -1,0 +1,6 @@
+/target
+/.direnv
+.env
+*.swp
+.devenv*
+devenv.local.nix

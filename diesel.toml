@@ -1,0 +1,13 @@
+# For documentation on how to configure this file,
+# see https://diesel.rs/guides/configuring-diesel-cli
+
+# Only the plain `domains` table is auto-generated here. Postgres views
+# (domain_live_status) carry no primary key for diesel-cli to infer, so it's
+# hand-written in crates/core/src/schema.rs instead, which `include!`s this
+# generated file -- see that file for details.
+[print_schema]
+file = "crates/core/src/schema_generated.rs"
+custom_type_derives = ["diesel::query_builder::QueryId"]
+
+[migrations_directory]
+dir = "migrations"

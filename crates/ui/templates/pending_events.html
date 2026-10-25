@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>pending event history -- ton-dns-tracker</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { font-family: system-ui, sans-serif; margin: 2rem; background: #0d1117; color: #c9d1d9; }
+    a { color: #58a6ff; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; padding: 0.4rem 0.8rem; border-bottom: 1px solid #30363d; }
+    th { color: #8b949e; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <p><a href="/">&larr; all domains</a></p>
+  <h1>pending event history</h1>
+  <p>
+    Domains where the indexer's event sync still has transaction history left to fetch
+    (<span class="mono">last_transaction_lt &gt;= events_synced_lt</span>) -- picked up on
+    the next refresh/events pass.
+  </p>
+
+  <p>
+    {{ total }} pending
+    {% if shown < total %}(showing the first {{ shown }}, sorted by most recently changed){% endif %}
+  </p>
+
+  {% if rows.is_empty() %}
+  <p>nothing pending -- everything's caught up.</p>
+  {% else %}
+  <table>
+    <thead>
+      <tr><th>domain</th><th>last_transaction_lt</th><th>events_synced_lt</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td><a href="/domain/{{ r.name_only }}">{{ r.name }}</a></td>
+        <td class="mono">{{ r.last_transaction_lt }}</td>
+        <td class="mono">{{ r.events_synced_lt }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</body>
+</html>
