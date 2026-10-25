@@ -57,6 +57,14 @@ pub enum CellError {
     OutOfRange(&'static str),
     #[error("domain label is not valid utf-8")]
     InvalidDomainLabel,
+    /// The item's `content` cell isn't the onchain-tagged records
+    /// dictionary at all, so the domain has no resolvable DNS records --
+    /// `dnsresolve` in nft-item.fc parses it the same way and would throw
+    /// too. Real mainnet data, not a decoder bug: seen both as a bare
+    /// `dns_adnl_address` record stored directly as the content cell, and
+    /// as a 0x00 tag followed by a ref with no HashmapE Maybe-bit.
+    #[error("content cell is not a dns records dictionary: {0}")]
+    NotDnsRecords(&'static str),
 }
 
 #[derive(Debug, Clone)]
@@ -238,8 +246,11 @@ pub fn decode_dns_records(content_cell: &Cell) -> Result<DecodedDnsRecords, Cell
     let mut parser = content_cell.parser();
     let tag = parser.load_uint(8)?;
     if tag != BigUint::from(0u8) {
-        return Err(CellError::UnexpectedLayout(
-            "expected onchain content tag (0)",
+        return Err(CellError::NotDnsRecords("expected onchain content tag (0)"));
+    }
+    if parser.remaining_bits() == 0 {
+        return Err(CellError::NotDnsRecords(
+            "no records dictionary after onchain content tag",
         ));
     }
 
@@ -373,4 +384,41 @@ fn biguint_to_u64(v: &BigUint, field: &'static str) -> Result<u64, CellError> {
     let mut buf = [0u8; 8];
     buf[8 - bytes.len()..].copy_from_slice(&bytes);
     Ok(u64::from_be_bytes(buf))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base64::Engine;
+
+    fn content_of(data_boc_b64: &str) -> ArcCell {
+        let boc = base64::engine::general_purpose::STANDARD
+            .decode(data_boc_b64)
+            .unwrap();
+        match decode_nft_item(&boc).unwrap() {
+            NftItemState::Initialized(item) => item.content,
+            NftItemState::Uninitialized { .. } => panic!("expected an initialized item"),
+        }
+    }
+
+    // hostpredator.ton (mainnet): content is a bare dns_adnl_address
+    // record (#ad01), not the onchain-tagged dictionary.
+    #[test]
+    fn bare_adnl_record_content_is_not_dns_records() {
+        let content = content_of("te6ccgEBAwEAogAC1ZVOgPOs7wY8HkzH5J9Ot6obzk5RqzVV0TVDYLcKSDRrgBbumyvWQKh+MNgNZuNXEVrgnvxKwmGV8sMSbRT6GW2Z8AFvYNPq0emKEcYI7XoOjJZdnFPwNbnZNRZxbYled7epOAAAAADUSI2xAQIARq0BsmqyLZQyOlVD6fkCVpnXbJq/6c4hl0FkDshnCz2cSSIAABhob3N0cHJlZGF0b3I=");
+        assert!(matches!(
+            decode_dns_records(&content),
+            Err(CellError::NotDnsRecords(_))
+        ));
+    }
+
+    // chmonya.ton (mainnet): 0x00 tag, then a ref but no Maybe-bit.
+    #[test]
+    fn tag_without_dictionary_is_not_dns_records() {
+        let content = content_of("te6ccgEBBQEAoAAC1SRcGo5mbwjOazoBgWGyOrUmV8fHf0UMuuYOI89j7MXDgBbumyvWQKh+MNgNZuNXEVrgnvxKwmGV8sMSbRT6GW2Z8AALTM6ryJrrPROnVcqiW4hKqc0z7tgEWzvFkpJsShaLNAAAAADVddZfAQIBAgADAA5jaG1vbnlhAQAEAD4AHWh0dHBzOi8vbmFtZXNwYWNlLm15L2xvZ28ucG5n");
+        assert!(matches!(
+            decode_dns_records(&content),
+            Err(CellError::NotDnsRecords(_))
+        ));
+    }
 }

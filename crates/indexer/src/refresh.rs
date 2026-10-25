@@ -5,7 +5,7 @@ use diesel::dsl::sql;
 use diesel::prelude::*;
 use diesel::sql_types::Bool;
 use diesel_async::RunQueryDsl;
-use ton_dns_core::cell::{self, NftItemState};
+use ton_dns_core::cell::{self, CellError, NftItemState};
 use ton_dns_core::models::Domain;
 use ton_dns_core::schema::domains;
 use ton_dns_core::ton_address::TonAddress;
@@ -148,6 +148,17 @@ pub async fn run(client: &TonCenterClient, pool: &DbPool, collection_address: &s
             // lost is strictly better than saving nothing.
             let records = match cell::decode_dns_records(&item.content) {
                 Ok(records) => records,
+                // Expected for a handful of domains whose owners stored
+                // something else as content -- recurs every pass, so not
+                // worth a warning (see CellError::NotDnsRecords).
+                Err(CellError::NotDnsRecords(reason)) => {
+                    tracing::debug!(
+                        address = %account.address,
+                        reason,
+                        "domain has no dns records dictionary, saving domain without them"
+                    );
+                    cell::DecodedDnsRecords::default()
+                }
                 Err(err) => {
                     tracing::warn!(
                         address = %account.address,
