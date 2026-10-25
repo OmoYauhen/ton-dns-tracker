@@ -104,6 +104,21 @@ See [`.env.example`](./.env.example):
 | `DNS_COLLECTION_ADDRESS` | `.ton` DNS collection NFT contract address, aka "Root DNS address" / config param #4 (indexer only; temporary until config-param lookup is implemented; default in `.env.example` is the real mainnet address) |
 | `BIND_ADDR` | Address the `ton-dns-ui` server binds to |
 
+## Restoring a database dump
+
+Dumps are `pg_dump -Fc` archives from Postgres 18, which older
+`pg_restore` versions can't read ("unsupported version (1.16) in file
+header") -- use the `pg_restore` from a Postgres 18 install. Stop the
+indexer and UI first, then restore into the existing database:
+
+```sh
+pg_restore -h 127.0.0.1 -p 5433 -U ton_dns_tracker -d ton_dns_tracker \
+  --clean --if-exists --no-owner ton_dns_tracker-<timestamp>.dump
+```
+
+The dump includes `__diesel_schema_migrations`, so `diesel migration run`
+afterwards only applies migrations newer than the dump.
+
 ## Layout
 
 ```
